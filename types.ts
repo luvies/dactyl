@@ -69,3 +69,9 @@ export interface ApplicationConfig {
 export interface Newable<T> {
   new (...args: any[]): T;
 }
+/**
+ * Definition for a class.
+ */
+export interface Newable<T> {
+  new (...args: any[]): T
+}

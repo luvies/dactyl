@@ -39,20 +39,7 @@ export function setControllerOwnMeta(target: Function, value: ControllerMetadata
  * given updated value
  */
 export function setControllerMeta(target: Object, value: ControllerMetadata): void {
-  setControllerOwnMeta(target.constructor, value);
-}
-/**
- * Helper method that only assigns controller meta if it doesn't
- * exist on the target.
- *
- * Used in `ensureController` to only set
- * default meta if the `@Controller` decorator has not been
- * used on the target yet
- */
-export function setControllerMetaIfNotDefined(target: object, value: ControllerMetadata): void {
-  if (!Reflect.has(target, CONTROLLER_META_PROPKEY)) {
-    setControllerMeta(target, value);
-  }
+  setControllerOwnMeta(target.constructor, value)
 }
 /**
  * Helper method that returns the default metadata object.

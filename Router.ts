@@ -13,7 +13,7 @@ import {
 
 import { HttpException } from "./HttpException.ts";
 import { RouterContext, Status, STATUS_TEXT } from "./deps.ts";
-import { getControllerOwnMeta, defaultMetadata } from "./metadata.ts";
+import { getControllerOwnMeta } from "./metadata.ts";
 
 /**
  * Router subclass - abstraction on top of `Router` class from Oak.
@@ -52,16 +52,14 @@ ______           _         _
    * // router superclass now configured to use DinosaurController's actions
    * ```
    */
-  public register(controller: Newable<any>): void {
-    const instance: any = new controller();
-
-    const meta: ControllerMetadata | undefined = getControllerOwnMeta(controller);
+  public register<T>(Controller: Newable<T>): void {
+    const meta: ControllerMetadata | undefined = getControllerOwnMeta(Controller);
     if (!meta || !meta.prefix) {
       throw new Error("Attempted to register non-controller class to DactylRouter");
     }
     console.info(`\t${meta.prefix}`);
 
-    meta.routes.forEach((route: RouteDefinition): void => {
+    for (const [, route] of meta.routes) {
       console.info(`\t\t[${route.requestMethod.toUpperCase()}] ${route.path}`);
 
       // normalize path if required
@@ -73,57 +71,67 @@ ______           _         _
       // Call routing function on OakRouter superclass
       this[route.requestMethod](
         path,
-        async (context: RouterContext): Promise<void> => {
-          try {
-            const { params, headers, query, body } = await this.retrieveFromContext(context);
-
-            const routeArgs: any[] = this.buildRouteArgumentsFromMeta(
-              meta.args,
-              route.methodName as string,
-              params,
-              body,
-              query,
-              headers,
-              context
-            );
-
-            // call controller action here. Provide arguments injected via parameter
-            // decorator function metadata
-            const response: any = await instance[route.methodName as string](...routeArgs);
-
-            // controller action manually accesses context.request.body and returns nothing
-            // so return early
-            if (!response && context.response.body) return;
-            // controller action returned no data, and didn't attach anything to response
-            // body. Assume 204 no content.
-            else if (!response && !context.response.body) {
-              return this.sendNoData(context.response);
-            }
-
-            const statusCode: number =
-              meta.defaultResponseCodes.get(route.methodName) ||
-              (route.requestMethod == HttpMethod.POST ? 201 : 200);
-
-            // Assign body and status here before oak middleware moves to next
-            context.response.body = response;
-            context.response.status = statusCode;
-          } catch (error) {
-            // Handle known error here
-            if (error instanceof HttpException) {
-              const response: {
-                error: string | undefined;
-                status: Status;
-              } = error.getError();
-              context.response.status = response.status;
-              context.response.body = response;
-            } else {
-              this.handleUnknownException(error, context.response);
-            }
-          }
-        }
+        async (ctx: RouterContext): Promise<void> => this.handleRequest(ctx, Controller, meta, route)
       );
-    });
+    };
     console.info("");
+  }
+  /**
+   * Handles a request coming into the server.
+   */
+  private async handleRequest(
+    context: RouterContext,
+    Controller: Newable<any>,
+    meta: ControllerMetadata,
+    route: RouteDefinition
+  ): Promise<void> {
+    try {
+      const { params, headers, query, body } = await this.retrieveFromContext(context);
+
+      const routeArgs: any[] = this.buildRouteArgumentsFromMeta(
+        meta.args,
+        route.methodName as string,
+        params,
+        body,
+        query,
+        headers,
+        context
+      );
+
+      // call controller action here. Provide arguments injected via parameter
+      // decorator function metadata
+      const instance = new Controller()
+      const response = await (instance[route.methodName as string])(...routeArgs);
+
+      // controller action manually accesses context.request.body and returns nothing
+      // so return early
+      if (!response && context.response.body) return;
+      // controller action returned no data, and didn't attach anything to response
+      // body. Assume 204 no content.
+      else if (!response && !context.response.body) {
+        return this.sendNoData(context.response);
+      }
+
+      const statusCode: number =
+        meta.defaultResponseCodes.get(route.methodName) ||
+        (route.requestMethod == HttpMethod.POST ? 201 : 200);
+
+      // Assign body and status here before oak middleware moves to next
+      context.response.body = response;
+      context.response.status = statusCode;
+    } catch (error) {
+      // Handle known error here
+      if (error instanceof HttpException) {
+        const response: {
+          error: string | undefined;
+          status: Status;
+        } = error.getError();
+        context.response.status = response.status;
+        context.response.body = response;
+      } else {
+        this.handleUnknownException(error, context.response);
+      }
+    }
   }
   /**
    * Helper function for deconstructing Oaks `RouterContext` context

@@ -12,7 +12,7 @@ const defineParameterDecorator = (
   paramKeyRequired?: boolean | undefined,
   paramKey?: string
 ): ParameterDecorator => (
-  target: any,
+  target: Object,
   propertyKey: string | Symbol,
   parameterIndex: number
 ): void => {

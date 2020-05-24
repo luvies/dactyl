@@ -2,7 +2,7 @@
 
 import { getControllerMeta, setControllerMeta, defaultMetadata } from "./metadata.ts";
 
-import { ControllerMetadata } from "./types.ts";
+import { ControllerMetadata } from "./types.ts"
 import { Status } from "./deps.ts";
 
 /**
