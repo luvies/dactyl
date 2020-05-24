@@ -1,4 +1,5 @@
 // Copyright 2020 Liam Tan. All rights reserved. MIT license.
+import { ServiceCollection } from "./deps.ts";
 
 export enum HttpMethod {
   GET = "get",
@@ -62,12 +63,7 @@ export interface RouteArgument {
 
 export interface ApplicationConfig {
   controllers: Array<Newable<any>>;
-}
-/**
- * Definition for a class.
- */
-export interface Newable<T> {
-  new (...args: any[]): T;
+  services?: ServiceCollection,
 }
 /**
  * Definition for a class.

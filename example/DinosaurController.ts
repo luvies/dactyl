@@ -10,18 +10,21 @@ import {
   Body,
   Query,
   Header,
-  Context,
-  Request,
-  Response,
   HttpStatus,
   BadRequestException,
-  RouterContext,
-  OakRequest,
-  OakResponse,
+  RouterContextService,
+  RequestService,
+  ResponseService,
 } from "./deps.ts";
 
 @Controller("/dinosaur")
 class DinosaurController {
+  constructor(
+    private ctx: RouterContextService,
+    private req: RequestService,
+    private res: ResponseService,
+  ) {}
+
   @Get("/")
   @HttpStatus(200)
   getDinosaurs(@Query("orderBy") orderBy: any, @Query("sort") sort: any) {
@@ -64,13 +67,9 @@ class DinosaurController {
     };
   }
   @Delete("/:id")
-  deleteDinosaur(
-    @Context() ctx: RouterContext,
-    @Request() req: OakRequest,
-    @Response() res: OakResponse
-  ) {
+  deleteDinosaur() {
     return {
-      message: `Deleted dinosaur with id ${ctx.params.id}`,
+      message: `Deleted dinosaur with id ${this.ctx.params.id}`,
     };
   }
 }

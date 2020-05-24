@@ -1,6 +1,14 @@
 // Copyright 2020 Liam Tan. All rights reserved. MIT license.
 
-import { Router as OakRouter, Middleware } from "./deps.ts";
+import {
+  Router as OakRouter,
+  Middleware,
+  RouterContext,
+  Status,
+  STATUS_TEXT,
+  ServiceCollection,
+  ServiceMultiCollection,
+} from "./deps.ts";
 
 import {
   RouteDefinition,
@@ -12,8 +20,12 @@ import {
 } from "./types.ts";
 
 import { HttpException } from "./HttpException.ts";
-import { RouterContext, Status, STATUS_TEXT } from "./deps.ts";
 import { getControllerOwnMeta } from "./metadata.ts";
+import {
+  RouterContextService,
+  RequestService,
+  ResponseService,
+} from "./services.ts";
 
 /**
  * Router subclass - abstraction on top of `Router` class from Oak.
@@ -22,8 +34,12 @@ import { getControllerOwnMeta } from "./metadata.ts";
  * `Application` class for bootstrapping Oak application
  */
 export class Router extends OakRouter {
-  public constructor() {
+  #appServices: ServiceCollection | undefined;
+  #controllers = new ServiceCollection();
+
+  public constructor(appServices: ServiceCollection | undefined) {
     super();
+    this.#appServices = appServices;
     console.info(`\
 ______           _         _ 
 |  _  \\         | |       | |
@@ -36,6 +52,7 @@ ______           _         _
     `);
     console.info("Registered routes:\n");
   }
+
   /**
    * Register function consumed by `Application`, takes controller
    * class definition and strips it's metadata. From this metadata,
@@ -75,7 +92,11 @@ ______           _         _
       );
     };
     console.info("");
+
+    // Add controller to services.
+    this.#controllers.addTransient(Controller)
   }
+
   /**
    * Handles a request coming into the server.
    */
@@ -98,9 +119,11 @@ ______           _         _
         context
       );
 
+      // Get an instance of the controller
+      const instance = this.getAllRequestServices(context).get(Controller);
+
       // call controller action here. Provide arguments injected via parameter
       // decorator function metadata
-      const instance = new Controller()
       const response = await (instance[route.methodName as string])(...routeArgs);
 
       // controller action manually accesses context.request.body and returns nothing
@@ -133,6 +156,28 @@ ______           _         _
       }
     }
   }
+
+  /**
+   * Creates a service multi-collection containing the controllers,
+   * request-specific services, and the application services.
+   */
+  private getAllRequestServices(context: RouterContext): ServiceMultiCollection {
+    const requestServices = new ServiceCollection();
+
+    requestServices.addStatic(RouterContextService, context);
+    requestServices.addStatic(RequestService, context.request);
+    requestServices.addStatic(ResponseService, context.response);
+
+    const multiCollection = new ServiceMultiCollection(this.#controllers, requestServices)
+
+    // If the app was given services, add them last (lowest priority).
+    if (this.#appServices) {
+      multiCollection.addCollections(this.#appServices)
+    }
+
+    return multiCollection;
+  }
+
   /**
    * Helper function for deconstructing Oaks `RouterContext` context
    * object. Retreives `context.params`, `context.request.headers`,

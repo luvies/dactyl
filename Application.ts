@@ -14,7 +14,7 @@ export class Application {
   private app: OakApplication;
 
   public constructor(appConfig: ApplicationConfig) {
-    this.router = new Router();
+    this.router = new Router(appConfig.services);
     this.app = new OakApplication();
 
     for (const controller of appConfig.controllers) {

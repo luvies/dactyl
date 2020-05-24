@@ -2,6 +2,8 @@
 
 import { ControllerMetadata } from "./types.ts";
 import { getControllerOwnMeta, setControllerOwnMeta, defaultMetadata } from "./metadata.ts";
+import {Service} from "./deps.ts"
+
 /**
  * Controller Class decorator responsible for initialising metadata on the controller class.
  * Defines the `prefix` for all subsequent routes defined on the controller.
@@ -12,5 +14,8 @@ export function Controller(prefix: string = "/"): ClassDecorator {
 
     meta.prefix = prefix;
     setControllerOwnMeta(target, meta);
+
+    // Apply Service decorator to class.
+    Service()(target)
   };
 }
